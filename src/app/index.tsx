@@ -1,61 +1,136 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from "react";
+import {
+  PermissionsAndroid,
+  Platform,
+  Pressable,
+  StyleSheet,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { BottomTabInset, Spacing } from "@/constants/theme";
+import Printer from "expo-printer";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
+async function requestBluetoothPermissions() {
+  if (Platform.OS !== "android") return true;
+
+  if (Platform.Version >= 31) {
+    const permissions = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ]);
+
     return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+      permissions[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] ===
+        PermissionsAndroid.RESULTS.GRANTED &&
+      permissions[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] ===
+        PermissionsAndroid.RESULTS.GRANTED
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+
+  return true;
 }
 
 export default function HomeScreen() {
+  const [isConnected, setIsConnected] = useState(false);
+
+  const handleConnect = async () => {
+    try {
+      console.log("Requesting Bluetooth permissions...");
+      const granted = await requestBluetoothPermissions();
+
+      if (!granted) {
+        console.error("Bluetooth permissions denied");
+        return;
+      }
+
+      console.log("Attempting to connect to printer...");
+      const connection = await Printer.connect("DC:0D:30:25:3D:D2");
+      console.log("Connection value returned:", connection);
+      console.log("Is connected:", Printer.isConnected());
+      setIsConnected(true);
+    } catch (error) {
+      console.error("Connection error:", error);
+    }
+  };
+
+  const handlePrintTest = async () => {
+    try {
+      console.log("Sending print test...");
+      await Printer.printTest();
+      console.log("Print test sent successfully");
+    } catch (error) {
+      console.error("Print test error:", error);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      console.log("Disconnecting from printer...");
+      Printer.disconnect();
+      console.log("Disconnected successfully");
+      setIsConnected(false);
+    } catch (error) {
+      console.error("Disconnect error:", error);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
+        <ThemedView style={styles.headerSection}>
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Printer Control
+          </ThemedText>
+          <ThemedText type="default" style={styles.status}>
+            {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
           </ThemedText>
         </ThemedView>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <ThemedView style={styles.buttonContainer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              styles.connectButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleConnect}
+            disabled={isConnected}
+          >
+            <ThemedText
+              style={[styles.buttonText, isConnected && styles.disabledText]}
+            >
+              {isConnected ? "✓ Connected" : "Connect to Printer"}
+            </ThemedText>
+          </Pressable>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
+          {isConnected && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.testButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handlePrintTest}
+            >
+              <ThemedText style={styles.buttonText}>Print Test Page</ThemedText>
+            </Pressable>
+          )}
+
+          {isConnected && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.disconnectButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleDisconnect}
+            >
+              <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+            </Pressable>
+          )}
         </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
       </SafeAreaView>
     </ThemedView>
   );
@@ -64,35 +139,60 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    justifyContent: "center",
+    flexDirection: "row",
   },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.three,
+  },
+  headerSection: {
+    alignItems: "center",
+    gap: Spacing.two,
+    marginBottom: Spacing.four,
   },
   title: {
-    textAlign: 'center',
+    textAlign: "center",
+    fontSize: 28,
   },
-  code: {
-    textTransform: 'uppercase',
+  status: {
+    fontSize: 16,
+    fontWeight: "500",
   },
-  stepContainer: {
+  buttonContainer: {
+    width: "100%",
+    maxWidth: 300,
     gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  },
+  button: {
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Spacing.two,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  connectButton: {
+    backgroundColor: "#4CAF50",
+  },
+  testButton: {
+    backgroundColor: "#2196F3",
+  },
+  disconnectButton: {
+    backgroundColor: "#f44336",
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  disabledText: {
+    opacity: 0.6,
   },
 });
