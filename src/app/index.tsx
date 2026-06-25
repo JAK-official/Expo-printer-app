@@ -65,6 +65,26 @@ export default function HomeScreen() {
     }
   };
 
+  const handlePrintSample = async () => {
+    try {
+      console.log("Sending print Sample...");
+      await Printer.printXpTt426bLabel({
+        productName: "Jumbo Diet",
+        productLine2: "Vanilla Chocolate",
+        productLine3: "",
+        productionDate: "02/03/2026",
+        lineTitle: "Line",
+        lineValue: "Line 1",
+        casesOnPallet: "120",
+        palletNo: "2",
+        barcodeValue: "123456789012",
+      });
+      console.log("Print Sample sent successfully");
+    } catch (error) {
+      console.error("Print Sample error:", error);
+    }
+  };
+
   const handleDisconnect = async () => {
     try {
       console.log("Disconnecting from printer...");
@@ -106,16 +126,33 @@ export default function HomeScreen() {
           </Pressable>
 
           {isConnected && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                styles.testButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={handlePrintTest}
-            >
-              <ThemedText style={styles.buttonText}>Print Test Page</ThemedText>
-            </Pressable>
+            <>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.testButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={handlePrintTest}
+              >
+                <ThemedText style={styles.buttonText}>
+                  Print Test Page
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.testButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={handlePrintSample}
+              >
+                <ThemedText style={styles.buttonText}>
+                  Print Test Sample
+                </ThemedText>
+              </Pressable>
+            </>
           )}
 
           {isConnected && (
