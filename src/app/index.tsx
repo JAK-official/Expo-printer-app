@@ -77,7 +77,7 @@ export default function HomeScreen() {
         lineValue: "Line 1",
         casesOnPallet: "120",
         palletNo: "2",
-        barcodeValue: "123456789012",
+        barcodeValue: "P000000001",
       });
       console.log("Print Sample sent successfully");
     } catch (error) {
